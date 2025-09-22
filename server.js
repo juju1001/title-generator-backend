@@ -1,20 +1,20 @@
 // server/server.js
-const express = require('express')
-const cors = require('cors')
-const axios = require('axios')
-require('dotenv').config()
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+require("dotenv").config();
 
-const app = express()
-const PORT = process.env.PORT || 3001
+const app = express();
+const PORT = process.env.PORT || 3001;
 
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'https://yourdomain.com'],
+    origin: ["http://localhost:5173", "https://title-generator-backend-production.up.railway.app"],
     credentials: true,
-  }),
-)
+  })
+);
 
-app.use(express.json())
+app.use(express.json());
 
 // ✅ 定义风格模板（直接写在 server.js 里）
 const STYLE_PROMPTS = {
@@ -88,93 +88,93 @@ const STYLE_PROMPTS = {
 请直接输出标题，不要解释，不要序号，每行一个。
 ⚠️ 注意：不要解释词语含义！不要写“示例”！直接生成标题！
 `,
-}
+};
 
 // ✅ 构建 Prompt 的函数
-function buildPrompt(promptText, style = '爆款小红书') {
-  const template = STYLE_PROMPTS[style] || STYLE_PROMPTS['爆款小红书']
-  return template.replace('{主题}', promptText.trim())
+function buildPrompt(promptText, style = "爆款小红书") {
+  const template = STYLE_PROMPTS[style] || STYLE_PROMPTS["爆款小红书"];
+  return template.replace("{主题}", promptText.trim());
 }
 
 // ✅ 代理接口：接收前端请求 → 生成 Prompt → 转发给 DashScope
-app.post('/api/generate', async (req, res) => {
+app.post("/api/generate", async (req, res) => {
   try {
     // ✅ 获取 prompt 和 style
-    const { prompt, style } = req.body
+    const { prompt, style } = req.body;
 
     if (!prompt) {
-      return res.status(400).json({ error: 'Prompt 不能为空' })
+      return res.status(400).json({ error: "Prompt 不能为空" });
     }
 
-    const apiKey = process.env.QWEN_API_KEY
+    const apiKey = process.env.QWEN_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: '服务器未配置API密钥' })
+      return res.status(500).json({ error: "服务器未配置API密钥" });
     }
 
     // ✅ 构建动态 Prompt！
-    const finalPrompt = buildPrompt(prompt, style)
+    const finalPrompt = buildPrompt(prompt, style);
 
-    console.log('🎨 选择风格:', style)
-    console.log('📝 最终Prompt:', finalPrompt)
+    console.log("🎨 选择风格:", style);
+    console.log("📝 最终Prompt:", finalPrompt);
 
     const response = await axios.post(
-      'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+      "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
       {
-        model: 'qwen-turbo',
+        model: "qwen-turbo",
         input: {
           prompt: finalPrompt, // 👈 关键！用构建好的 Prompt！
         },
         parameters: {
-          result_format: 'text',
+          result_format: "text",
         },
       },
       {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
         timeout: 30000,
-      },
-    )
+      }
+    );
 
     if (response.data?.output?.text) {
       // ✅ 过滤掉示例、要求、空行
       const titles = response.data.output.text
-        .split('\n')
+        .split("\n")
         .map((t) => t.trim())
         .filter((t) => {
           return (
             t.length > 0 &&
-            !t.startsWith('//') &&
-            !t.includes('示例：') &&
-            !t.includes('要求：') &&
-            !t.includes('注意：') &&
-            !t.includes('风格：') &&
-            !t.includes('你是一个')
-          )
+            !t.startsWith("//") &&
+            !t.includes("示例：") &&
+            !t.includes("要求：") &&
+            !t.includes("注意：") &&
+            !t.includes("风格：") &&
+            !t.includes("你是一个")
+          );
         })
-        .slice(0, 10)
+        .slice(0, 10);
 
-      res.json({ titles })
+      res.json({ titles });
     } else {
       res.status(500).json({
-        error: 'AI返回格式异常',
+        error: "AI返回格式异常",
         raw: response.data,
-      })
+      });
     }
   } catch (error) {
-    console.error('AI生成失败:', error.message)
+    console.error("AI生成失败:", error.message);
     res.status(500).json({
-      error: 'AI服务调用失败',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    })
+      error: "AI服务调用失败",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
-})
+});
 
 // 健康检查
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: '后端代理运行中' })
-})
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", message: "后端代理运行中" });
+});
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 后端代理运行在 http://0.0.0.0:${PORT}`);
   console.log(`✅ 健康检查: /health`);
