@@ -175,8 +175,8 @@ app.post('/api/generate', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: '后端代理运行中' })
 })
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 后端代理运行在 http://localhost:${PORT}`)
-  console.log(`✅ 前端请调用 http://localhost:${PORT}/api/generate`)
-})
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 后端代理运行在 http://0.0.0.0:${PORT}`);
+  console.log(`✅ 健康检查: /health`);
+  console.log(`✅ 生成接口: POST /api/generate`);
+});
